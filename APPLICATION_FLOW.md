@@ -136,12 +136,12 @@ DRAFT → PENDING_ADMIN → PENDING_SALES → PUBLISHED
 
 ### 4.4 Steel BOQ View by Role
 
-| Role                                   | Rate (₹/MT)             | Conversion (₹/MT) | Rate × Qty | Conversion × Qty | Total Price |
-| -------------------------------------- | ----------------------- | ----------------- | ---------- | ---------------- | ----------- |
-| **SuperAdmin** (editing PENDING_ADMIN) | Read-only (from config) | Editable          | ✓          | ✓                | —           |
-| **SuperAdmin** (viewing PENDING_SALES or PUBLISHED) | ✓ | ✓ (read-only)     | ✓          | ✓                | —           |
-| **Sales** (PENDING_SALES or PUBLISHED) | ✓                       | —                 | —          | —                | ✓ (Rate × Qty only) |
-| **Designer**                           | —                       | —                 | —          | —                | —           |
+| Role                                                | Rate (₹/MT)             | Conversion (₹/MT) | Rate × Qty | Conversion × Qty | Total Price         |
+| --------------------------------------------------- | ----------------------- | ----------------- | ---------- | ---------------- | ------------------- |
+| **SuperAdmin** (editing PENDING_ADMIN)              | Read-only (from config) | Editable          | ✓          | ✓                | —                   |
+| **SuperAdmin** (viewing PENDING_SALES or PUBLISHED) | ✓                       | ✓ (read-only)     | ✓          | ✓                | —                   |
+| **Sales** (PENDING_SALES or PUBLISHED)              | ✓                       | —                 | —          | —                | ✓ (Rate × Qty only) |
+| **Designer**                                        | —                       | —                 | —          | —                | —                   |
 
 **Notes:**
 
@@ -152,10 +152,10 @@ DRAFT → PENDING_ADMIN → PENDING_SALES → PUBLISHED
 
 When **Sales** or **SuperAdmin** publishes a PENDING_SALES estimation, a discount popup appears before finalizing.
 
-| Role        | Popup Content                                                                 | Discount Applied To      |
-| ----------- | ----------------------------------------------------------------------------- | ------------------------ |
-| **Sales**   | Total (Steel BOQ) = Rate total only (Quantity × Rate)                         | Single total             |
-| **SuperAdmin** | Rate total, Conversion total (no combined total)                           | Both, shown separately    |
+| Role           | Popup Content                                         | Discount Applied To    |
+| -------------- | ----------------------------------------------------- | ---------------------- |
+| **Sales**      | Total (Steel BOQ) = Rate total only (Quantity × Rate) | Single total           |
+| **SuperAdmin** | Rate total, Conversion total (no combined total)      | Both, shown separately |
 
 **Sales popup:** Total (Steel BOQ), discount %, Price after discount.
 
