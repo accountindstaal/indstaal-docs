@@ -9,7 +9,7 @@ A complete guide to how the Indstaal application works, including all roles, mod
 | Role           | Description                                                                                                                              |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | **SuperAdmin** | Full access to all modules; can perform any action; manages users and settings                                                           |
-| **Sales**      | Creates inquiries, QRFs; publishes QRFs; auto-assigns designer; publishes PENDING_SALES estimations (when assigned); generates proposals |
+| **Sales**      | Creates inquiries, QRFs; publishes QRFs; auto-assigns designer; updates Steel BOQ category when PENDING_SALES (assigned); publishes estimations; generates proposals |
 | **Designer**   | Edits assigned QRFs; creates estimations; submits estimations to Admin; can reassign QRF internally                                      |
 | **Purchase**   | Manages static price config: Rate (₹/MT) only; adds items and subcategories; does NOT see QRF or Estimation                              |
 | **Admin**      | Same as SuperAdmin (publish estimation, manage users)                                                                                    |
@@ -20,10 +20,16 @@ A complete guide to how the Indstaal application works, including all roles, mod
 
 | Role           | Access                               | Actions                                  |
 | -------------- | ------------------------------------ | ---------------------------------------- |
-| **SuperAdmin** | All inquiries, all QRFs, total users | View stats, recent items, role breakdown |
-| **Sales**      | Own inquiries, own/assigned QRFs     | View stats for their data                |
-| **Designer**   | Own/assigned QRFs                    | View stats for their data                |
-| **Purchase**   | N/A (no inquiry/QRF ownership)       | View general stats (user counts, etc.)   |
+| **SuperAdmin** | All inquiries, all QRFs, total users | View stats, recent items, role breakdown, Active Users |
+| **Sales**      | Own inquiries, own/assigned QRFs     | View stats for their data (no Active Users) |
+| **Designer**   | Own/assigned QRFs                    | View stats for their data (no Active Users) |
+| **Purchase**   | Price Config only                    | View **Price Config** card only; no Active Users, no inquiry/QRF stats |
+
+**Notes:**
+
+- **Purchase**: Dashboard shows only the Price Config card; no inquiry/QRF statistics or Active Users.
+- **Sales/Designer**: See inquiry/QRF stats; no Active Users.
+- **SuperAdmin**: Full dashboard including Active Users, Users by role, and all stats.
 
 ---
 
@@ -130,6 +136,7 @@ DRAFT → PENDING_ADMIN → PENDING_SALES → PUBLISHED
 | **Submit to Admin**           | SuperAdmin, Designer                      | DRAFT only                                                                |
 | **Add/Edit Conversion Rates** | SuperAdmin (Admin)                        | PENDING_ADMIN                                                             |
 | **Submit to Sales**           | SuperAdmin (Admin)                        | PENDING_ADMIN; assigns to QRF's Inquiry sales person (no selection popup) |
+| **Update Steel BOQ Category** | SuperAdmin, Sales (assigned only)         | PENDING_SALES; pencil icon opens Update Category popup; select category/subcategory from Price Config |
 | **Publish**                   | SuperAdmin (Admin), Sales (assigned only) | PENDING_SALES; discount popup shown before publish (optional discount %)  |
 | **Delete**                    | SuperAdmin                                | Not PUBLISHED                                                             |
 | **Generate Proposal**         | SuperAdmin, Sales                         | PUBLISHED only                                                            |
@@ -148,7 +155,28 @@ DRAFT → PENDING_ADMIN → PENDING_SALES → PUBLISHED
 - **Sales**: Sees only Rate (₹/MT) and one Total Price column (Quantity × Rate). No conversion rate.
 - **SuperAdmin**: Sees both Rate and Conversion. When editing PENDING_ADMIN: conversion is editable; when viewing PENDING_SALES or PUBLISHED: conversion is read-only. Two separate totals: Rate × Qty and Conversion × Qty.
 
-### 4.5 Publish with Discount
+### 4.5 Steel BOQ Creation & Update Category (PENDING_SALES)
+
+**At Estimation Creation:**
+
+- Steel BOQ is populated from Price Config with **categories only** (no subcategories).
+- Categories = items where `parent_code` is null or empty (e.g. code "1", "2", "3").
+
+**Update Category (PENDING_SALES):**
+
+- **Who can use**: SuperAdmin and Sales (assigned to the estimation) when status is PENDING_SALES.
+- **How**: Pencil icon in the last column opens an **Update Category** popup.
+- **Popup**: Lists category and subcategories from Price Config; user selects one to update that row only (code, name, rate, quantity preserved).
+- **Admin view**: SuperAdmin sees **Rate** and **Conversion** separately (e.g. "Rate ₹12.00 + Conversion ₹22.00 = ₹34.00/MT"). On selection, both `rate_per_mt` and `conversion_rate` are updated from Price Config.
+- **Sales view**: Sales sees **Final Rate** only (combined rate + conversion). On selection, the combined rate is applied; backend uses Price Config for rate and conversion (ignores payload).
+- **Add Row**: Same popup behavior when adding a new Steel BOQ row from Price Config.
+
+**Price Config API:**
+
+- **Admin**: Receives `rate_per_mt` and `conversion_rate` separately.
+- **Non-Admin** (Sales, Designer): Receives `final_rate` (rate + conversion); `conversion_rate` is hidden.
+
+### 4.6 Publish with Discount
 
 When **Sales** or **SuperAdmin** publishes a PENDING_SALES estimation, a discount popup appears before finalizing.
 
@@ -163,13 +191,14 @@ When **Sales** or **SuperAdmin** publishes a PENDING_SALES estimation, a discoun
 
 Quantities use breakdown totals by code when available (from takeoff); otherwise fall back to `quantity_mt` on each row. The discount percentage is persisted in the estimation revision details and shown in the estimation basic info after publish.
 
-### 4.6 Estimation Revisions List (per QRF)
+### 4.7 Estimation Revisions List (per QRF)
 
 | Action                | SuperAdmin        | Sales                            | Designer                   | Purchase |
 | --------------------- | ----------------- | -------------------------------- | -------------------------- | -------- |
 | **Create Estimation** | ✓                 | ✗                                | ✓ (from published QRF rev) | ✗        |
 | **Submit to Admin**   | ✓ (DRAFT)         | ✗                                | ✓ (DRAFT)                  | ✗        |
 | **Submit to Sales**   | ✓ (PENDING_ADMIN) | ✗                                | ✗                          | ✗        |
+| **Update Steel BOQ**  | ✓ (PENDING_SALES) | ✓ (PENDING_SALES, assigned only) | ✗                          | ✗        |
 | **Publish**           | ✓ (PENDING_SALES) | ✓ (PENDING_SALES, assigned only) | ✗                          | ✗        |
 | **Generate Proposal** | ✓ (PUBLISHED)     | ✓ (PUBLISHED)                    | ✗                          | ✗        |
 | **Delete**            | ✓ (not PUBLISHED) | ✗                                | ✗                          | ✗        |
@@ -214,15 +243,16 @@ Quantities use breakdown totals by code when available (from takeoff); otherwise
 5. (Optional) Manually assign/reassign Designer if needed
 6. (Designer creates estimation, submits to Admin)
 7. (Admin adds conversion, submits to Sales) → Estimation moves to **PENDING_SALES** assigned to this Sales user
-8. **Publish** PENDING_SALES estimation → discount popup (optional %) → PUBLISHED
-9. Generate proposal for PUBLISHED estimation
+8. **Update Steel BOQ Category** (optional): Pencil icon opens popup; Sales sees Final Rate; selection updates row from Price Config
+9. **Publish** PENDING_SALES estimation → discount popup (optional %) → PUBLISHED
+10. Generate proposal for PUBLISHED estimation
 
 ### 7.2 Designer Flow
 
 1. View assigned QRFs (auto-assigned on publish or manually assigned)
 2. Edit QRF
 3. (Optional) **Reassign** QRF to another Designer internally
-4. Create Estimation from published QRF revision (rates come from Price Config)
+4. Create Estimation from published QRF revision (rates come from Price Config; Steel BOQ has categories only, no subcategories)
 5. Submit DRAFT estimation to Admin
 6. (Admin adds conversion, submits to Sales; Sales publishes) → Designer can view
 
@@ -242,8 +272,9 @@ Quantities use breakdown totals by code when available (from takeoff); otherwise
    - Cannot edit rate (Purchase only)
 2. Add Conversion Rates on estimation (PENDING_ADMIN)
 3. **Submit to Sales** (PENDING_ADMIN) → assigns to QRF's Inquiry sales person; moves to PENDING_SALES
-4. Publish estimation (from PENDING_SALES; discount popup with Rate + Conversion totals; or directly from PENDING_ADMIN if needed)
-5. Manage users, settings, delete inquiries/estimations
+4. **Update Steel BOQ Category** (PENDING_SALES): Pencil icon opens popup; Admin sees Rate + Conversion separately; selection updates both `rate_per_mt` and `conversion_rate` from Price Config
+5. Publish estimation (from PENDING_SALES; discount popup with Rate + Conversion totals; or directly from PENDING_ADMIN if needed)
+6. Manage users, settings, delete inquiries/estimations
 
 ---
 
@@ -302,6 +333,7 @@ Quantities use breakdown totals by code when available (from takeoff); otherwise
 | Submit to Sales               |          ✓          |   ✗   |    ✗     |       ✗       |
 | Manage Price Config           | ✓ (conversion only) |   ✗   |    ✗     | ✓ (rate only) |
 | Add Conversion Rates          |          ✓          |   ✗   |    ✗     |       ✗       |
+| Update Steel BOQ Category    |          ✓          |  ✓†   |    ✗     |       ✗       |
 | Publish Estimation            |          ✓          |  ✓†   |    ✗     |       ✗       |
 | Generate Proposal             |          ✓          |   ✓   |    ✗     |       ✗       |
 | Delete Inquiry/QRF/Estimation |          ✓          |   ✗   |    ✗     |       ✗       |
